@@ -13,6 +13,7 @@ Wraps up the remarkable parser for use as a Parser in TiddlyWiki
 "use strict";
 
 var Remarkable = require("$:/plugins/tiddlywiki/markdown/remarkable.js");
+var hljs       = require("$:/plugins/tiddlywiki/highlight/highlight.js");
 
 ///// Set up configuration options /////
 function parseAsBoolean(tiddlerName) {
@@ -23,14 +24,39 @@ var pluginOpts = {
 	renderWikiText: parseAsBoolean("$:/config/markdown/renderWikiText"),
 	renderWikiTextPragma: $tw.wiki.getTiddlerText("$:/config/markdown/renderWikiTextPragma").trim()
 };
-var remarkableOpts = {
-	breaks: parseAsBoolean("$:/config/markdown/breaks"),
-	linkify: parseAsBoolean("$:/config/markdown/linkify"),
-	quotes: $tw.wiki.getTiddlerText("$:/config/markdown/quotes"),
-	typographer: parseAsBoolean("$:/config/markdown/typographer")
-};
 
-var md = new Remarkable(remarkableOpts);
+var md = new Remarkable('full', {
+	html:         false,        // Enable HTML tags in source
+	xhtmlOut:     false,        // Use '/' to close single tags (<br />)
+	breaks:       false,        // Convert '\n' in paragraphs into <br>
+	langPrefix:   'language-',  // CSS language prefix for fenced blocks
+	linkify:      true,         // autoconvert URL-like texts to links
+	linkTarget:   '',           // set target to open link in
+
+	// Enable some language-neutral replacements + quotes beautification
+	typographer:  false,
+
+	// Double + single quotes replacement pairs, when typographer enabled,
+	// and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
+	quotes: '“”‘’',
+
+	// Highlighter function. Should return escaped HTML,
+	// or '' if input not changed
+	highlight: function (str, lang) {
+		if (lang && hljs.getLanguage(lang)) {
+			try {
+				return hljs.highlight(lang, str).value;
+			} catch (__) {}
+		}
+
+		try {
+			return hljs.highlightAuto(str).value;
+		} catch (__) {}
+
+		return ''; // use external default escaping
+	}
+});
+
 
 function findTagWithType(nodes, startPoint, type, level) {
 	for (var i = startPoint; i < nodes.length; i++) {
